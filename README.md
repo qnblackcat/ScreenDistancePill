@@ -7,20 +7,10 @@
 # ScreenDistancePill
 
 Replaces the full-screen Screen Distance warning ("iPhone is Too Close",
-iOS 17) with a small pill under the Dynamic Island / Notch. The pill blocks nothing and
+iOS 17+) with a small pill under the Dynamic Island / Notch. The pill blocks nothing and
 goes away by itself once the face is far enough away (or no longer seen).
 
-## Settings
 Tested on iOS 17.1.1 roothide (iPhone 15 Pro):
-- 👁️ Warning Sensitivity page: Distance and Remind After.
-- 🎨 Appearance page:
-  - Animation: Fade In/Out time (0.2–1.2 s, default 0.6), Check Mark time,
-    Edge Glow (off by default: an orange glow along the screen edges if the
-    phone is still too close 5–25 s after the pill appears), and Orange Glow
-    (with its strength, 50–150 %) / Bouncing Icon so the pill is harder to
-    miss.
-  - Feedback: Haptic Feedback when the pill appears.
-- 🚫 Exclude page: Excluded Apps and Excluded Time.
 
 <details>
 <summary>How the stock warning works</summary>
