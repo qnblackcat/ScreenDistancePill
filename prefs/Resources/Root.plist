@@ -1,0 +1,100 @@
+{
+    title = ScreenDistancePill;
+    items = (
+        {
+            cell = PSGroupCell;
+            footerText = "・Replaces the full-screen Screen Distance warning (\"iPhone is Too Close\") with a small pill under the Dynamic Island / Notch.\n・The pill does not block anything and goes away by itself once the phone is far enough away.";
+        },
+        {
+            cell = PSSwitchCell;
+            label = "Enabled";
+            default = 1;
+            defaults = "com.qn.screendistancepill";
+            key = enabled;
+        },
+
+        {
+            cell = PSGroupCell;
+        },
+        {
+            cell = PSLinkCell;
+            label = "🎨 Appearance";
+            detail = QDAppearanceListController;
+            isController = 1;
+        },
+        {
+            cell = PSLinkCell;
+            label = "👁️ Warning Sensitivity";
+            detail = QDSensitivityListController;
+            isController = 1;
+        },
+        {
+            cell = PSLinkCell;
+            label = "🚫 Exclude";
+            detail = QDExcludeListController;
+            isController = 1;
+        },
+
+        {
+            cell = PSGroupCell;
+            label = "🧪 Test";
+            footerText = "・Show Now: shows the pill at once, even in an excluded app or during the excluded time.\n・Show in 5 Seconds: waits so you can switch to another app, then follows Excluded Apps and Excluded Time like a real reminder.\n・Hold the phone at a normal distance and the pill goes away by itself.";
+        },
+        {
+            cell = PSButtonCell;
+            label = "Show Now";
+            action = triggerWarning:;
+        },
+        {
+            cell = PSButtonCell;
+            label = "Show in 5 Seconds";
+            action = triggerWarningDelayed:;
+        },
+
+        {
+            cell = PSGroupCell;
+            label = "🛠️ Troubleshooting";
+            footerText = "・Debug: logs every distance sample and how long it took, and also writes the log to a file on this device (about 128 KB per process) so you can copy it into a bug report.\n・Restart eyereliefd: to reloads the ScreenDistancePill hooks. It starts again by itself when needed.";
+        },
+        {
+            cell = PSSwitchCell;
+            label = "Debug";
+            default = 0;
+            defaults = "com.qn.screendistancepill";
+            key = debug;
+        },
+        {
+            cell = PSButtonCell;
+            label = "Copy Debug Log";
+            action = copyDebugLog;
+        },
+        {
+            cell = PSButtonCell;
+            label = "Clear Debug Log";
+            action = clearDebugLog;
+        },
+        {
+            cell = PSButtonCell;
+            label = "Reset Settings";
+            action = resetSettings;
+        },
+        {
+            cell = PSButtonCell;
+            label = "Restart eyereliefd";
+            action = restartEyeReliefDaemon;
+        },
+        {
+            cell = PSGroupCell;
+            label = "🔗 Source";
+        },
+        {
+            cell = PSButtonCell;
+            label = "Source Code";
+            action = openSourceCode:;
+        },
+        {
+            cell = PSGroupCell;
+            footerText = "© 2026 Qn (Đạt Nguyễn)\nLicensed under GNU GPLv3";
+        }
+    );
+}

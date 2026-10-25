@@ -1,0 +1,108 @@
+{
+    title = "Appearance";
+    items = (
+        {
+            cell = PSGroupCell;
+            label = "🎞️ Animation";
+            footerText = "・Fade In/Out: how long the pill takes to pop in and to fade out.\n・Check Mark: how long the green check mark stays once the phone is far enough away, before the pill fades out.\n・Edge Glow: if the phone is still too close some seconds after the pill appears (the slider below it, 5–25 s), an orange glow fades in along the edges of the screen and pulses with the pill. It never blocks touches and goes away with the pill.\n・Orange Glow: tints the pill orange and adds an orange glow that flares up in time with the bounce; it all turns green with the check mark. The slider below it sets how strong the orange is, in percent (100 is the default).\n・Bouncing Icon: the eye icon bounces every few seconds while the pill is up.";
+        },
+        {
+            cell = PSStaticTextCell;
+            label = "Fade In/Out (s)";
+        },
+        {
+            cell = PSSliderCell;
+            default = 0.6;
+            min = 0.2;
+            max = 1.2;
+            showValue = 1;
+            isSegmented = 1;
+            segmentCount = 10;
+            defaults = "com.qn.screendistancepill";
+            key = pillShowDuration;
+        },
+        {
+            cell = PSStaticTextCell;
+            label = "Check Mark (s)";
+        },
+        {
+            cell = PSSliderCell;
+            default = 1.2;
+            min = 0.2;
+            max = 2.2;
+            showValue = 1;
+            isSegmented = 1;
+            segmentCount = 10;
+            defaults = "com.qn.screendistancepill";
+            key = pillCheckHold;
+        },
+        {
+            cell = PSSwitchCell;
+            label = "Edge Glow (s)";
+            default = 0;
+            defaults = "com.qn.screendistancepill";
+            key = pillEdgeGlow;
+        },
+        {
+            cell = PSSliderCell;
+            id = pillEdgeGlowDelay;
+            default = 15;
+            min = 5;
+            max = 25;
+            showValue = 1;
+            isSegmented = 1;
+            segmentCount = 10;
+            defaults = "com.qn.screendistancepill";
+            key = pillEdgeGlowDelay;
+        },
+        {
+            cell = PSSwitchCell;
+            label = "Orange Glow";
+            default = 1;
+            defaults = "com.qn.screendistancepill";
+            key = pillGlow;
+        },
+        {
+            cell = PSSliderCell;
+            id = pillGlowStrength;
+            default = 100;
+            min = 50;
+            max = 150;
+            showValue = 1;
+            isSegmented = 1;
+            segmentCount = 10;
+            defaults = "com.qn.screendistancepill";
+            key = pillGlowStrength;
+        },
+        {
+            cell = PSSwitchCell;
+            label = "Bouncing Icon";
+            default = 1;
+            defaults = "com.qn.screendistancepill";
+            key = pillBounce;
+        },
+
+        {
+            cell = PSGroupCell;
+            label = "📳 Feedback";
+            footerText = "Haptic Feedback: a tap when the pill appears, since it does not block the screen and is easy to miss.";
+        },
+        {
+            cell = PSSwitchCell;
+            label = "Haptic Feedback";
+            default = 0;
+            defaults = "com.qn.screendistancepill";
+            key = pillHaptic;
+        },
+        {
+            cell = PSSegmentCell;
+            id = pillHapticStrength;
+            default = "light";
+            defaults = "com.qn.screendistancepill";
+            key = pillHapticStrength;
+            validValues = ("selection", "soft", "light", "medium", "heavy");
+            validTitles = ("Extra Light", "Soft", "Light", "Medium", "Strong");
+            shortTitles = ("Extra Light", "Soft", "Light", "Medium", "Strong");
+        },
+    );
+}

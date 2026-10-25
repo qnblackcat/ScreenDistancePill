@@ -1,0 +1,11 @@
+{
+    CFBundleDevelopmentRegion = English;
+    CFBundleExecutable = ScreenDistancePillPrefs;
+    CFBundleIdentifier = "com.qn.screendistancepill.prefs";
+    CFBundleInfoDictionaryVersion = "6.0";
+    CFBundlePackageType = BNDL;
+    CFBundleShortVersionString = "0.1.0";
+    CFBundleSignature = "????";
+    CFBundleVersion = "1.0";
+    NSPrincipalClass = QDRootListController;
+}

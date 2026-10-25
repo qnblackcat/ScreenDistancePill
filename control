@@ -1,0 +1,9 @@
+Package: com.qn.screendistancepill
+Name: ScreenDistancePill
+Depends: mobilesubstrate, preferenceloader, com.opa334.altlist, firmware (>= 17.0)
+Version: 1.0.0
+Architecture: iphoneos-arm
+Description: Replaces the "iPhone is Too Close" (Screen Distance) screen with a small pill
+Maintainer: Qn
+Author: Qn
+Section: Tweaks

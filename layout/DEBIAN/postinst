@@ -1,0 +1,7 @@
+#!/bin/sh
+# eyereliefd is not restarted by package managers, and an already running
+# eyereliefd would keep going without (or with the old) tweak. launchd
+# relaunches it on demand. SIGKILL, because eyereliefd uses EnableTransactions
+# and can sit on a SIGTERM while a transaction is open.
+killall -9 eyereliefd 2>/dev/null
+exit 0

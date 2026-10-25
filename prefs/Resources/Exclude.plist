@@ -1,0 +1,53 @@
+{
+    title = "Exclude";
+    items = (
+        {
+            cell = PSGroupCell;
+            id = excludedAppsGroup;
+            label = "📱 Excluded Apps";
+            footerText = "No reminders while one of these apps is open.";
+        },
+        {
+            cell = PSLinkCell;
+            id = excludedApps;
+            label = "Excluded Apps";
+            detail = ATLApplicationListMultiSelectionController;
+            get = excludedApps:;
+            set = "setExcludedApps:specifier:";
+            useSearchBar = 1;
+            hideSearchBarWhileScrolling = 0;
+            sections = ( { sectionType = Visible; } );
+        },
+
+        {
+            cell = PSGroupCell;
+            label = "🕒 Excluded Time";
+            footerText = "No reminders between these times, every day.\nThe range can run past midnight.";
+        },
+        {
+            cell = PSSwitchCell;
+            label = "Exclude on Schedule";
+            default = 0;
+            defaults = "com.qn.screendistancepill";
+            key = pauseEnabled;
+        },
+        {
+            cell = PSDefaultCell;
+            cellClass = QDTimeCell;
+            id = pauseStart;
+            label = "From";
+            default = 1320;
+            defaults = "com.qn.screendistancepill";
+            key = pauseStart;
+        },
+        {
+            cell = PSDefaultCell;
+            cellClass = QDTimeCell;
+            id = pauseEnd;
+            label = "To";
+            default = 420;
+            defaults = "com.qn.screendistancepill";
+            key = pauseEnd;
+        },
+    );
+}
