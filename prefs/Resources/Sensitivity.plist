@@ -3,14 +3,27 @@
     items = (
         {
             cell = PSGroupCell;
+        },
+        {
+            cell = PSSwitchCell;
+            label = "Custom Sensitivity";
+            default = 0;
+            defaults = "com.qn.screendistancepill";
+            key = sensitivityEnabled;
+        },
+
+        {
+            cell = PSGroupCell;
             footerText = "・Distance: iOS uses 30cm by default.\n・Remind After: iOS checks the distance about every 80 seconds. The warning appears when the counter reaches 4 (~5 min). A normal-distance check lowers the counter by 1. Higher Remind After settings raise the counter needed for a warning.";
         },
         {
             cell = PSStaticTextCell;
+            id = sensitivityDistanceLabel;
             label = "Distance (cm)";
         },
         {
             cell = PSSliderCell;
+            id = sensitivityDistance;
             default = 30;
             min = 25;
             max = 40;
@@ -22,10 +35,12 @@
         },
         {
             cell = PSStaticTextCell;
+            id = sensitivityRemindLabel;
             label = "Remind After";
         },
         {
             cell = PSSegmentCell;
+            id = sensitivityRemind;
             default = "4";
             defaults = "com.qn.screendistancepill";
             key = sensitivity;

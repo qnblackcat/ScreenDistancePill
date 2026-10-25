@@ -624,6 +624,11 @@ static void publishSettings(void) {
 	// the slider stores a double that may not land exactly on the whole number
 	NSInteger distanceCm = lround([prefs[@"distanceCm"] ?: @(QD_DEFAULT_DISTANCE_CM) doubleValue]);
 	NSInteger sensitivity = [prefs[@"sensitivity"] ?: @(QD_DEFAULT_SENSITIVITY) integerValue];
+	// Custom Sensitivity off: hand eyereliefd iOS's own values (30 cm, 4 samples)
+	if (![prefs[@"sensitivityEnabled"] ?: @NO boolValue]) {
+		distanceCm = QD_DEFAULT_DISTANCE_CM;
+		sensitivity = QD_DEFAULT_SENSITIVITY;
+	}
 	publishState(QD_ENABLED_STATE, enabled ? QDEnabledStateOn : QDEnabledStateOff);
 	publishState(QD_DEBUG_STATE, debug);
 	publishState(QD_THRESHOLD_STATE, (uint64_t)MAX(distanceCm, 0) * 10);

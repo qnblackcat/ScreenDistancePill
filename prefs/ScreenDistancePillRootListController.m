@@ -107,6 +107,7 @@ static NSDictionary<NSString *, NSArray<NSString *> *> *dependentRows(void) {
 	return @{
 		@"pillHaptic": @[ @"pillHapticStrength" ],
 		@"pauseEnabled": @[ @"pauseStart", @"pauseEnd" ],
+		@"sensitivityEnabled": @[ @"sensitivityDistanceLabel", @"sensitivityDistance", @"sensitivityRemindLabel", @"sensitivityRemind" ],
 	};
 }
 
