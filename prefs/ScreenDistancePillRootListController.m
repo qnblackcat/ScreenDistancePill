@@ -65,7 +65,7 @@ static BOOL QDKillall(NSString *name) {
 @implementation QDListController
 
 static BOOL isOurs(PSSpecifier *specifier) {
-	return [specifier.properties[@"defaults"] isEqualToString:@"com.qn.screendistancepill"]
+	return [specifier.properties[@"defaults"] isEqualToString:QD_PREFS_DOMAIN]
 		&& specifier.properties[@"key"] != nil;
 }
 
@@ -95,7 +95,7 @@ static BOOL loadAltList(void) {
 		if (!NSClassFromString(@"ATLApplicationListMultiSelectionController")) {
 			NSString *path = jbroot(@"/Library/Frameworks/AltList.framework/AltList");
 			if (!dlopen(path.fileSystemRepresentation, RTLD_NOW))
-				QDLog(@"couldn't load AltList from %@: %s", path, dlerror());
+				QDDebugLog(@"couldn't load AltList from %@: %s", path, dlerror());
 		}
 		available = NSClassFromString(@"ATLApplicationListMultiSelectionController") != nil;
 	});
@@ -105,9 +105,9 @@ static BOOL loadAltList(void) {
 // rows that only matter while a switch is on, by the switch's key
 static NSDictionary<NSString *, NSArray<NSString *> *> *dependentRows(void) {
 	return @{
-		@"pillHaptic": @[ @"pillHapticStrength" ],
-		@"pauseEnabled": @[ @"pauseStart", @"pauseEnd" ],
-		@"sensitivityEnabled": @[ @"sensitivityDistanceLabel", @"sensitivityDistance", @"sensitivityRemindLabel", @"sensitivityRemind" ],
+		QD_KEY_HAPTIC: @[ @"pillHapticStrength" ],
+		QD_KEY_PAUSE_ENABLED: @[ @"pauseStart", @"pauseEnd" ],
+		QD_KEY_SENSITIVITY_ENABLED: @[ @"sensitivityDistanceLabel", @"sensitivityDistance", @"sensitivityRemindLabel", @"sensitivityRemind" ],
 	};
 }
 
@@ -218,12 +218,12 @@ static NSDictionary<NSString *, NSArray<NSString *> *> *dependentRows(void) {
 // AltList's multi-selection list reads and writes the bundle ids through the
 // Excluded Apps row's getter and setter
 - (NSArray *)excludedApps:(PSSpecifier *)specifier {
-	NSArray *apps = [QDPrefs load][@"excludedApps"];
+	NSArray *apps = [QDPrefs load][QD_KEY_EXCLUDED_APPS];
 	return [apps isKindOfClass:[NSArray class]] ? apps : @[];
 }
 
 - (void)setExcludedApps:(NSArray *)apps specifier:(PSSpecifier *)specifier {
-	[QDPrefs setObject:[apps isKindOfClass:[NSArray class]] ? apps : @[] forKey:@"excludedApps"];
+	[QDPrefs setObject:[apps isKindOfClass:[NSArray class]] ? apps : @[] forKey:QD_KEY_EXCLUDED_APPS];
 }
 
 @end

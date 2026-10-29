@@ -41,16 +41,67 @@ typedef NS_ENUM(uint64_t, QDEnabledState) {
 };
 // 1 while Debug is on
 #define QD_DEBUG_STATE "com.qn.screendistancepill/Debug"
-// too-close threshold in mm
+// too-close threshold in mm; 0 (Custom Sensitivity off) means iOS's own
 #define QD_THRESHOLD_STATE "com.qn.screendistancepill/Threshold"
-// too-close samples (80 s apart) before a reminder; iOS uses 4
+// too-close samples (80 s apart) before a reminder; 0 (Custom Sensitivity
+// off) means iOS's own 4
 #define QD_SENSITIVITY_STATE "com.qn.screendistancepill/Sensitivity"
 
-// defaults, also in Root.plist
+// a notify state, registering name into *token (NOTIFY_TOKEN_INVALID at
+// first) on the first call; 0 if it can't be read
+uint64_t QDReadState(const char *name, int *token);
+
+// the "defaults" of every row in the Settings plists
+#define QD_PREFS_DOMAIN @"com.qn.screendistancepill"
+
+// keys in the plist
+#define QD_KEY_ENABLED @"enabled"
+#define QD_KEY_DEBUG @"debug"
+// 👁️ Warning Sensitivity
+#define QD_KEY_SENSITIVITY_ENABLED @"sensitivityEnabled"
+#define QD_KEY_DISTANCE_CM @"distanceCm"
+#define QD_KEY_SENSITIVITY @"sensitivity"
+// 🎨 Appearance
+#define QD_KEY_FADE_DURATION @"pillShowDuration"
+#define QD_KEY_CHECK_HOLD @"pillCheckHold"
+#define QD_KEY_EDGE_GLOW @"pillEdgeGlow"
+#define QD_KEY_EDGE_GLOW_DELAY @"pillEdgeGlowDelay"
+#define QD_KEY_GLOW @"pillGlow"
+#define QD_KEY_GLOW_STRENGTH @"pillGlowStrength"
+#define QD_KEY_BOUNCE @"pillBounce"
+#define QD_KEY_HAPTIC @"pillHaptic"
+#define QD_KEY_HAPTIC_STRENGTH @"pillHapticStrength"
+// 🚫 Exclude
+#define QD_KEY_EXCLUDED_APPS @"excludedApps"
+#define QD_KEY_PAUSE_ENABLED @"pauseEnabled"
+#define QD_KEY_PAUSE_START @"pauseStart"
+#define QD_KEY_PAUSE_END @"pauseEnd"
+
+// defaults, also in the Settings plists (Root, Sensitivity, Appearance,
+// Exclude); keep both in step
+#define QD_DEFAULT_ENABLED YES
+#define QD_DEFAULT_DEBUG NO
+#define QD_DEFAULT_SENSITIVITY_ENABLED NO
 #define QD_DEFAULT_DISTANCE_CM 30
 #define QD_DEFAULT_SENSITIVITY 4
+#define QD_DEFAULT_FADE_DURATION 0.6
+#define QD_DEFAULT_CHECK_HOLD 1.2
+#define QD_DEFAULT_EDGE_GLOW NO
+#define QD_DEFAULT_EDGE_GLOW_DELAY 15
+#define QD_DEFAULT_GLOW YES
+#define QD_DEFAULT_GLOW_STRENGTH 100
+#define QD_DEFAULT_BOUNCE YES
+#define QD_DEFAULT_HAPTIC NO
+#define QD_DEFAULT_HAPTIC_STRENGTH @"light"
+#define QD_DEFAULT_PAUSE_ENABLED NO
 #define QD_DEFAULT_PAUSE_START (22 * 60)
 #define QD_DEFAULT_PAUSE_END (7 * 60)
+
+// a stored switch, or fallback when it is missing or not a number
+BOOL QDPrefBool(NSDictionary *prefs, NSString *key, BOOL fallback);
+// a stored number (slider, segment), or fallback when it is missing or not a
+// number; clamped to [min, max]
+double QDPrefDouble(NSDictionary *prefs, NSString *key, double fallback, double min, double max);
 
 // Settings live in one plist inside jbroot instead of going through cfprefsd,
 // which would deny our domain to sandboxed processes (same trick as

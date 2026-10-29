@@ -47,6 +47,8 @@ Tested on iOS 17.1.1 roothide (iPhone 15 Pro):
   `+[ERAttentionAwarenessClient _categoryForDistance:withTooCloseDistanceThreshold:withFaceState:]`:
   0 too close, 1 at or beyond the threshold, 2 no face. A failed sample or
   180 s without a safe one post `…/PillCancel` instead.
+- Threshold and Sensitivity apply only while Custom Sensitivity is on; off,
+  both stay iOS's own.
 - Threshold: `tooCloseDistanceThreshold` on both `EREyeReliefEngine` and
   `ERAttentionAwarenessClient` returns the Distance setting (stock 300 mm), so
   the reminder and the pill's "far enough" use the same value.
@@ -71,16 +73,16 @@ Tested on iOS 17.1.1 roothide (iPhone 15 Pro):
   green check mark (the glow and tint, if on, turn steady green), which stays for a while before the pill fades out (the edge glow fades out
   right away);
   `…/PillCancel` fades it out directly. SpringBoard also takes the pill down on
-  lock and after 200 s, and posts `…/PillDismissed` so the daemon stops
-  sampling.
+  lock and after 200 s, and only then posts `…/PillDismissed` so the daemon
+  stops sampling.
 - Before showing the pill SpringBoard checks Excluded Apps (the bundle id of
   `-[SpringBoard _accessibilityFrontMostApplication]`) and Excluded Time.
   If one applies it posts `…/PillSuppressed`; eyereliefd ends the reminder
   with outcome 2 as if the phone had been moved away. Unlike Apple's own list,
   sampling keeps going in excluded apps; they just never get a reminder.
 - Enabled, Debug, Distance and Remind After reach eyereliefd as notify states
-  (`…/Enabled`, `…/Debug`, `…/Threshold` in mm, `…/Sensitivity` in samples)
-  that SpringBoard publishes at launch and whenever the settings change,
+  (`…/Enabled`, `…/Debug`, `…/Threshold` in mm, `…/Sensitivity` in samples,
+  both 0 while Custom Sensitivity is off) that SpringBoard publishes at launch and whenever the settings change,
   because eyereliefd's sandbox may not be able to read the plist.
 
 </details>

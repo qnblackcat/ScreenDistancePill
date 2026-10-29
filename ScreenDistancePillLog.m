@@ -10,10 +10,7 @@ static NSString *const QDRecordSeparator = @"\x1e";
 
 BOOL QDDebugEnabled(void) {
 	static int token = NOTIFY_TOKEN_INVALID;
-	if (token == NOTIFY_TOKEN_INVALID && notify_register_check(QD_DEBUG_STATE, &token) != NOTIFY_STATUS_OK)
-		return NO;
-	uint64_t state = 0;
-	return notify_get_state(token, &state) == NOTIFY_STATUS_OK && state == 1;
+	return QDReadState(QD_DEBUG_STATE, &token) == 1;
 }
 
 // First directory the sandbox really lets us write to wins; the reader looks
@@ -71,14 +68,13 @@ static void QDLogFileAppend(NSString *text) {
 	});
 }
 
-void QDLog(NSString *format, ...) {
+void QDLogWrite(NSString *format, ...) {
 	va_list args;
 	va_start(args, format);
 	NSString *text = [[NSString alloc] initWithFormat:format arguments:args];
 	va_end(args);
 	NSLog(@"[ScreenDistancePill] %@", text);
-	if (QDDebugEnabled())
-		QDLogFileAppend(text);
+	QDLogFileAppend(text);
 }
 
 static NSArray<NSString *> *QDLogPaths(void) {

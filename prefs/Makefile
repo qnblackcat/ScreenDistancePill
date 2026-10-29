@@ -1,9 +1,9 @@
 TARGET = iphone:clang:17.5:17.0
+ARCHS = arm64 arm64e
 
 include $(THEOS)/makefiles/common.mk
 
 BUNDLE_NAME = ScreenDistancePillPrefs
-ARCHS = arm64 arm64e
 
 ScreenDistancePillPrefs_FILES = ScreenDistancePillRootListController.m ScreenDistancePillTimeCell.m ../ScreenDistancePillPrefs.m ../ScreenDistancePillLog.m
 ScreenDistancePillPrefs_INSTALL_PATH = /Library/PreferenceBundles

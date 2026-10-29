@@ -9,8 +9,8 @@
 //   hides the pill and reports the outcome EyeReliefUI gives when Continue is
 //   tapped at a safe distance. If SpringBoard declines to show it (excluded
 //   app / time) it ends the same way.
-// - the too-close threshold and the number of too-close samples before a
-//   reminder come from Settings.
+// - with Custom Sensitivity on, the too-close threshold and the number of
+//   too-close samples before a reminder come from Settings.
 // Disabled, everything is stock. The test buttons in Settings run the same path.
 
 #import <Foundation/Foundation.h>
@@ -54,41 +54,33 @@
 static __weak ERDaemonManager *daemonManager;
 static BOOL triggerInFlight;
 
-// settings SpringBoard publishes as notify states; 0 means not published
-static uint64_t readState(const char *name, int *token) {
-	if (*token == NOTIFY_TOKEN_INVALID && notify_register_check(name, token) != NOTIFY_STATUS_OK)
-		return 0;
-	uint64_t state = 0;
-	notify_get_state(*token, &state);
-	return state;
-}
-
-// the state if it lies in [min, max], else 0
+// a setting SpringBoard publishes as a notify state if it lies in [min, max],
+// else 0: not published, out of range or Custom Sensitivity off
 static uint64_t readStateInRange(const char *name, int *token, uint64_t min, uint64_t max) {
-	uint64_t state = readState(name, token);
+	uint64_t state = QDReadState(name, token);
 	return state >= min && state <= max ? state : 0;
 }
 
 static BOOL tweakEnabled(void) {
 	static int token = NOTIFY_TOKEN_INVALID;
-	return readState(QD_ENABLED_STATE, &token) != QDEnabledStateOff;
+	return QDReadState(QD_ENABLED_STATE, &token) != QDEnabledStateOff;
 }
 
+// the custom threshold in mm, 0 for iOS's own
 static NSInteger thresholdMillimeters(void) {
 	static int token = NOTIFY_TOKEN_INVALID;
-	uint64_t mm = readStateInRange(QD_THRESHOLD_STATE, &token, 200, 500);
-	return mm ?: QD_DEFAULT_DISTANCE_CM * 10;
+	return tweakEnabled() ? readStateInRange(QD_THRESHOLD_STATE, &token, 200, 500) : 0;
 }
 
+// the custom number of too-close samples before a reminder, 0 for iOS's own
 static float sensitivitySamples(void) {
 	static int token = NOTIFY_TOKEN_INVALID;
-	uint64_t samples = readStateInRange(QD_SENSITIVITY_STATE, &token, 1, 20);
-	return samples ?: QD_STOCK_SENSITIVITY;
+	return tweakEnabled() ? readStateInRange(QD_SENSITIVITY_STATE, &token, 1, 20) : 0;
 }
 
 // the threshold both the engine and the client compare against
 static NSInteger effectiveThreshold(NSInteger stock) {
-	return tweakEnabled() ? thresholdMillimeters() : stock;
+	return thresholdMillimeters() ?: stock;
 }
 
 // all pill state lives on the main queue
@@ -150,7 +142,7 @@ static void startPill(ERDaemonManager *manager, void (^completion)(NSInteger)) {
 	pillActive = YES;
 	NSUInteger generation = ++pillGeneration;
 	pillCompletion = [completion copy];
-	QDDebugLog(@"asking SpringBoard for the pill (flags %llu, threshold %ld mm)", (unsigned long long)request, (long)thresholdMillimeters());
+	QDDebugLog(@"asking SpringBoard for the pill (flags %llu, threshold %ld mm, 0 = stock)", (unsigned long long)request, (long)thresholdMillimeters());
 
 	static int showToken = NOTIFY_TOKEN_INVALID;
 	if (showToken == NOTIFY_TOKEN_INVALID)
@@ -208,8 +200,9 @@ static NSUInteger triggerGeneration;
 - (void)setTooCloseCount:(float)count {
 	float old = self.tooCloseCount;
 	float stock = count;
-	if (processingSample && tweakEnabled() && count > old)
-		count = old + (count - old) * QD_STOCK_SENSITIVITY / sensitivitySamples();
+	float samples = processingSample ? sensitivitySamples() : 0;
+	if (samples && count > old)
+		count = old + (count - old) * QD_STOCK_SENSITIVITY / samples;
 	if (processingSample)
 		QDDebugLog(@"too-close count %.2f -> %.2f (stock %.2f)", old, count, stock);
 	%orig(count);
@@ -277,6 +270,6 @@ static void triggerWarning(QDPillRequest request) {
 	notify_register_dispatch(QD_PILL_SUPPRESSED, &token, dispatch_get_main_queue(), ^(int t) {
 		finishPill(NO, @"SpringBoard did not show it (excluded app or excluded time)");
 	});
-	QDDebugLog(@"loaded into eyereliefd, notify_register status %u, enabled %d, threshold %ld mm, sensitivity %.0f samples",
+	QDDebugLog(@"loaded into eyereliefd, notify_register status %u, enabled %d, threshold %ld mm, sensitivity %.0f samples (0 = stock)",
 		status, tweakEnabled(), (long)thresholdMillimeters(), sensitivitySamples());
 }

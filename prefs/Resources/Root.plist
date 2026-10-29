@@ -54,7 +54,7 @@
         {
             cell = PSGroupCell;
             label = "🛠️ Troubleshooting";
-            footerText = "・Debug: logs every distance sample and how long it took, and also writes the log to a file on this device (about 128 KB per process) so you can copy it into a bug report.\n・Restart eyereliefd: to reloads the ScreenDistancePill hooks. It starts again by itself when needed.";
+            footerText = "・Debug: logs every distance sample and how long it took, and also writes the log to a file on this device (about 128 KB per process) so you can copy it into a bug report.\n・Restart eyereliefd: reloads the ScreenDistancePill hooks. It starts again by itself when needed.";
         },
         {
             cell = PSSwitchCell;

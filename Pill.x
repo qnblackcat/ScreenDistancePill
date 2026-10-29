@@ -393,8 +393,12 @@ static CAKeyframeAnimation *beatAnimation(NSString *keyPath, id rest, id peak) {
 static QDPillWindow *pillWindow;
 static QDPillView *pillView;
 static QDVignetteView *vignetteView;
+static NSLayoutConstraint *pillTopConstraint;
 static BOOL pillShown;
 static NSUInteger pillGeneration;
+// the settings as of the last QD_PREFS_CHANGED, so a reminder doesn't read
+// the plist (QDPrefs posts that after every write and on reset)
+static NSDictionary *settings;
 // for the log: how long the pill stayed up
 static NSDate *pillShownAt;
 
@@ -411,7 +415,7 @@ static BOOL ensurePillWindow(void) {
 		return YES;
 	UIWindowScene *scene = mainWindowScene();
 	if (!scene) {
-		QDLog(@"no window scene for the pill");
+		QDDebugLog(@"no window scene for the pill");
 		return NO;
 	}
 	pillWindow = [[QDPillWindow alloc] initWithWindowScene:scene];
@@ -426,34 +430,41 @@ static BOOL ensurePillWindow(void) {
 	// under the pill, so the glow never washes over it
 	vignetteView = [QDVignetteView new];
 	[root.view addSubview:vignetteView];
-	[NSLayoutConstraint activateConstraints:@[
-		[vignetteView.leadingAnchor constraintEqualToAnchor:root.view.leadingAnchor],
-		[vignetteView.trailingAnchor constraintEqualToAnchor:root.view.trailingAnchor],
-		[vignetteView.topAnchor constraintEqualToAnchor:root.view.topAnchor],
-		[vignetteView.bottomAnchor constraintEqualToAnchor:root.view.bottomAnchor],
-	]];
+	[NSLayoutConstraint activateConstraints:pinConstraints(vignetteView, root.view, UIEdgeInsetsZero)];
 
 	pillView = [QDPillView new];
 	pillView.beatHandler = ^{
 		[vignetteView beat];
 	};
 	[root.view addSubview:pillView];
-	// the status bar is as tall as the Dynamic Island area, so this puts the
-	// pill just below the island
-	CGFloat top = scene.statusBarManager.statusBarFrame.size.height + 6;
+	// the constant is set by updatePillTop on every show
+	pillTopConstraint = [pillView.topAnchor constraintEqualToAnchor:root.view.topAnchor];
 	[NSLayoutConstraint activateConstraints:@[
 		[pillView.centerXAnchor constraintEqualToAnchor:root.view.centerXAnchor],
-		[pillView.topAnchor constraintEqualToAnchor:root.view.topAnchor constant:top],
+		pillTopConstraint,
 		[pillView.leadingAnchor constraintGreaterThanOrEqualToAnchor:root.view.leadingAnchor constant:20],
 	]];
 	return YES;
 }
 
+// The status bar is as tall as the Dynamic Island / notch area, so this puts
+// the pill just below it. Read on every show: the status bar can be hidden
+// (0 tall) when the window is made, e.g. under a full-screen app; then the
+// last known height is kept, or the safe area is used if there is none yet.
+static void updatePillTop(void) {
+	CGFloat statusBar = pillWindow.windowScene.statusBarManager.statusBarFrame.size.height;
+	if (statusBar > 0)
+		pillTopConstraint.constant = statusBar + 6;
+	else if (pillTopConstraint.constant == 0)
+		pillTopConstraint.constant = pillWindow.safeAreaInsets.top + 6;
+	QDDebugLog(@"pill top %.0f pt (status bar %.0f pt)", pillTopConstraint.constant, statusBar);
+}
+
 // same values and styles as FlicksForAll's haptic strength picker
 static void playShowHaptic(NSDictionary *prefs) {
-	if (![prefs[@"pillHaptic"] ?: @NO boolValue])
+	if (!QDPrefBool(prefs, QD_KEY_HAPTIC, QD_DEFAULT_HAPTIC))
 		return;
-	NSString *strength = prefs[@"pillHapticStrength"] ?: @"light";
+	NSString *strength = prefs[QD_KEY_HAPTIC_STRENGTH] ?: QD_DEFAULT_HAPTIC_STRENGTH;
 	NSDictionary<NSString *, NSNumber *> *styles = @{
 		@"soft": @(UIImpactFeedbackStyleSoft),
 		@"light": @(UIImpactFeedbackStyleLight),
@@ -467,16 +478,9 @@ static void playShowHaptic(NSDictionary *prefs) {
 		[[UISelectionFeedbackGenerator new] selectionChanged];
 }
 
-// a Settings slider, clamped to its range
-static double sliderValue(NSDictionary *prefs, NSString *key, double fallback, double min, double max) {
-	id value = prefs[key];
-	double number = [value respondsToSelector:@selector(doubleValue)] ? [value doubleValue] : fallback;
-	return MIN(MAX(number, min), max);
-}
-
 // "Fade In/Out" slider: the pop-in spring and the fade-out both take this long
 static NSTimeInterval pillFadeDuration(NSDictionary *prefs) {
-	return sliderValue(prefs, @"pillShowDuration", 0.6, 0.2, 1.2);
+	return QDPrefDouble(prefs, QD_KEY_FADE_DURATION, QD_DEFAULT_FADE_DURATION, 0.2, 1.2);
 }
 
 static void fadeOutPill(NSUInteger generation, NSTimeInterval duration) {
@@ -493,25 +497,33 @@ static void fadeOutPill(NSUInteger generation, NSTimeInterval duration) {
 	}];
 }
 
-// distanceFine: eyereliefd saw a safe distance, so show the check mark first
-static void hidePill(BOOL distanceFine, NSString *reason) {
+typedef NS_ENUM(NSInteger, QDPillEnd) {
+	// eyereliefd saw a safe distance: the check mark shows first
+	QDPillEndSafeDistance,
+	// eyereliefd stopped watching: just fade out
+	QDPillEndCancelled,
+	// SpringBoard takes it down itself (lock, timeout) and tells eyereliefd
+	QDPillEndDismissed,
+};
+
+static void hidePill(QDPillEnd end, NSString *reason) {
 	if (!pillShown)
 		return;
 	pillShown = NO;
 	NSUInteger generation = ++pillGeneration;
 	NSTimeInterval shownFor = -[pillShownAt timeIntervalSinceNow];
 	QDDebugLog(@"hiding pill after %.1f s: %@", shownFor, reason);
-	NSDictionary *prefs = [QDPrefs load];
-	NSTimeInterval fade = pillFadeDuration(prefs);
+	NSTimeInterval fade = pillFadeDuration(settings);
 	// goes right away, even while the check mark is still showing
 	[vignetteView fadeOutWithDuration:fade];
-	if (!distanceFine) {
+	if (end == QDPillEndDismissed)
 		notify_post(QD_PILL_DISMISSED);
+	if (end != QDPillEndSafeDistance) {
 		fadeOutPill(generation, fade);
 		return;
 	}
 	[pillView showSuccess];
-	NSTimeInterval hold = sliderValue(prefs, @"pillCheckHold", 1.2, 0.2, 2.2);
+	NSTimeInterval hold = QDPrefDouble(settings, QD_KEY_CHECK_HOLD, QD_DEFAULT_CHECK_HOLD, 0.2, 2.2);
 	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(hold * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
 		if (generation == pillGeneration)
 			fadeOutPill(generation, fade);
@@ -527,11 +539,14 @@ static void showPill(BOOL test) {
 	QDDebugLog(@"showing pill%@", test ? @" (test)" : @"");
 
 	[pillView showWarning];
-	NSDictionary *prefs = [QDPrefs load];
+	NSDictionary *prefs = settings;
 	// Glow Strength slider, in percent
-	CGFloat glowStrength = sliderValue(prefs, @"pillGlowStrength", 100, 50, 150) / 100;
-	[pillView startAttentionWithBounce:[prefs[@"pillBounce"] ?: @YES boolValue] glow:[prefs[@"pillGlow"] ?: @YES boolValue] glowStrength:glowStrength];
+	CGFloat glowStrength = QDPrefDouble(prefs, QD_KEY_GLOW_STRENGTH, QD_DEFAULT_GLOW_STRENGTH, 50, 150) / 100;
+	[pillView startAttentionWithBounce:QDPrefBool(prefs, QD_KEY_BOUNCE, QD_DEFAULT_BOUNCE)
+		glow:QDPrefBool(prefs, QD_KEY_GLOW, QD_DEFAULT_GLOW)
+		glowStrength:glowStrength];
 	pillWindow.hidden = NO;
+	updatePillTop();
 	[pillWindow layoutIfNeeded];
 	pillView.alpha = 0;
 	pillView.transform = CGAffineTransformConcat(CGAffineTransformMakeScale(0.6, 0.6), CGAffineTransformMakeTranslation(0, -20));
@@ -541,8 +556,8 @@ static void showPill(BOOL test) {
 	} completion:nil];
 	playShowHaptic(prefs);
 
-	if ([prefs[@"pillEdgeGlow"] ?: @NO boolValue]) {
-		NSTimeInterval delay = sliderValue(prefs, @"pillEdgeGlowDelay", 15, 5, 25);
+	if (QDPrefBool(prefs, QD_KEY_EDGE_GLOW, QD_DEFAULT_EDGE_GLOW)) {
+		NSTimeInterval delay = QDPrefDouble(prefs, QD_KEY_EDGE_GLOW_DELAY, QD_DEFAULT_EDGE_GLOW_DELAY, 5, 25);
 		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
 			if (generation != pillGeneration || !pillShown)
 				return;
@@ -553,7 +568,7 @@ static void showPill(BOOL test) {
 
 	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, QD_PILL_TIMEOUT * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
 		if (generation == pillGeneration)
-			hidePill(NO, @"timed out");
+			hidePill(QDPillEndDismissed, @"timed out");
 	});
 }
 
@@ -566,16 +581,16 @@ static NSInteger minutesSetting(NSDictionary *prefs, NSString *key, NSInteger fa
 
 // why a reminder should not show right now, nil if it should
 static NSString *suppressionReason(void) {
-	NSDictionary *prefs = [QDPrefs load];
+	NSDictionary *prefs = settings;
 
 	NSString *frontmost = [(SpringBoard *)[UIApplication sharedApplication] _accessibilityFrontMostApplication].bundleIdentifier;
-	NSArray *excluded = prefs[@"excludedApps"];
+	NSArray *excluded = prefs[QD_KEY_EXCLUDED_APPS];
 	if (frontmost && [excluded isKindOfClass:[NSArray class]] && [excluded containsObject:frontmost])
 		return [NSString stringWithFormat:@"%@ is excluded", frontmost];
 
-	if ([prefs[@"pauseEnabled"] ?: @NO boolValue]) {
-		NSInteger start = minutesSetting(prefs, @"pauseStart", QD_DEFAULT_PAUSE_START);
-		NSInteger end = minutesSetting(prefs, @"pauseEnd", QD_DEFAULT_PAUSE_END);
+	if (QDPrefBool(prefs, QD_KEY_PAUSE_ENABLED, QD_DEFAULT_PAUSE_ENABLED)) {
+		NSInteger start = minutesSetting(prefs, QD_KEY_PAUSE_START, QD_DEFAULT_PAUSE_START);
+		NSInteger end = minutesSetting(prefs, QD_KEY_PAUSE_END, QD_DEFAULT_PAUSE_END);
 		NSDateComponents *now = [[NSCalendar currentCalendar] components:NSCalendarUnitHour | NSCalendarUnitMinute fromDate:[NSDate date]];
 		NSInteger minutes = now.hour * 60 + now.minute;
 		// a window like 22:00 → 07:00 runs over midnight
@@ -616,24 +631,26 @@ static void publishState(const char *name, uint64_t value) {
 	notify_set_state(token.intValue, value);
 }
 
-// eyereliefd reads its settings from here: its sandbox may not reach the plist
-static void publishSettings(void) {
+// reloads the settings cache and publishes what eyereliefd needs: its sandbox
+// may not reach the plist
+static void reloadSettings(void) {
 	NSDictionary *prefs = [QDPrefs load];
-	BOOL enabled = [prefs[@"enabled"] ?: @YES boolValue];
-	BOOL debug = [prefs[@"debug"] ?: @NO boolValue];
-	// the slider stores a double that may not land exactly on the whole number
-	NSInteger distanceCm = lround([prefs[@"distanceCm"] ?: @(QD_DEFAULT_DISTANCE_CM) doubleValue]);
-	NSInteger sensitivity = [prefs[@"sensitivity"] ?: @(QD_DEFAULT_SENSITIVITY) integerValue];
-	// Custom Sensitivity off: hand eyereliefd iOS's own values (30 cm, 4 samples)
-	if (![prefs[@"sensitivityEnabled"] ?: @NO boolValue]) {
-		distanceCm = QD_DEFAULT_DISTANCE_CM;
-		sensitivity = QD_DEFAULT_SENSITIVITY;
+	settings = prefs;
+	BOOL enabled = QDPrefBool(prefs, QD_KEY_ENABLED, QD_DEFAULT_ENABLED);
+	BOOL debug = QDPrefBool(prefs, QD_KEY_DEBUG, QD_DEFAULT_DEBUG);
+	// Custom Sensitivity off: 0 for both, so eyereliefd keeps iOS's own values
+	NSInteger distanceCm = 0;
+	NSInteger sensitivity = 0;
+	if (QDPrefBool(prefs, QD_KEY_SENSITIVITY_ENABLED, QD_DEFAULT_SENSITIVITY_ENABLED)) {
+		// the slider stores a double that may not land exactly on the whole number
+		distanceCm = lround(QDPrefDouble(prefs, QD_KEY_DISTANCE_CM, QD_DEFAULT_DISTANCE_CM, 0, 100));
+		sensitivity = lround(QDPrefDouble(prefs, QD_KEY_SENSITIVITY, QD_DEFAULT_SENSITIVITY, 0, 100));
 	}
 	publishState(QD_ENABLED_STATE, enabled ? QDEnabledStateOn : QDEnabledStateOff);
 	publishState(QD_DEBUG_STATE, debug);
-	publishState(QD_THRESHOLD_STATE, (uint64_t)MAX(distanceCm, 0) * 10);
-	publishState(QD_SENSITIVITY_STATE, (uint64_t)MAX(sensitivity, 0));
-	QDDebugLog(@"%s, debug %s, threshold %ld cm, sensitivity %ld samples",
+	publishState(QD_THRESHOLD_STATE, (uint64_t)distanceCm * 10);
+	publishState(QD_SENSITIVITY_STATE, (uint64_t)sensitivity);
+	QDDebugLog(@"%s, debug %s, threshold %ld cm, sensitivity %ld samples (0 = stock)",
 		enabled ? "enabled" : "disabled", debug ? "on" : "off", (long)distanceCm, (long)sensitivity);
 }
 
@@ -641,11 +658,11 @@ static void publishSettings(void) {
 	if (![[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"])
 		return;
 
-	publishSettings();
+	reloadSettings();
 
 	int token;
 	notify_register_dispatch(QD_PREFS_CHANGED, &token, dispatch_get_main_queue(), ^(int t) {
-		publishSettings();
+		reloadSettings();
 	});
 	notify_register_dispatch(QD_PILL_SHOW, &token, dispatch_get_main_queue(), ^(int t) {
 		uint64_t request = 0;
@@ -653,13 +670,13 @@ static void publishSettings(void) {
 		handlePillRequest((QDPillRequest)request);
 	});
 	notify_register_dispatch(QD_PILL_HIDE, &token, dispatch_get_main_queue(), ^(int t) {
-		hidePill(YES, @"eyereliefd says the distance is fine");
+		hidePill(QDPillEndSafeDistance, @"eyereliefd says the distance is fine");
 	});
 	notify_register_dispatch(QD_PILL_CANCEL, &token, dispatch_get_main_queue(), ^(int t) {
-		hidePill(NO, @"eyereliefd stopped watching");
+		hidePill(QDPillEndCancelled, @"eyereliefd stopped watching");
 	});
 	// distance sampling stops on the lock screen, so the pill would never clear
 	notify_register_dispatch("com.apple.springboard.lockcomplete", &token, dispatch_get_main_queue(), ^(int t) {
-		hidePill(NO, @"device locked");
+		hidePill(QDPillEndDismissed, @"device locked");
 	});
 }
