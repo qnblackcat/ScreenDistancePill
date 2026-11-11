@@ -4,6 +4,6 @@ Depends: mobilesubstrate, preferenceloader, com.opa334.altlist, firmware (>= 17.
 Version: 1.0.2
 Architecture: iphoneos-arm
 Description: Replaces the "iPhone is Too Close" (Screen Distance) screen with a small pill
-Maintainer: Qn
-Author: Qn
+Maintainer: Qn <qnblackcat@gmail.com>
+Author: Qn <qnblackcat@gmail.com>
 Section: Tweaks
