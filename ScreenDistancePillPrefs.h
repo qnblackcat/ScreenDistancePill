@@ -62,6 +62,10 @@ uint64_t QDReadState(const char *name, int *token);
 #define QD_KEY_DISTANCE_CM @"distanceCm"
 #define QD_KEY_SENSITIVITY @"sensitivity"
 // 🎨 Appearance
+#define QD_KEY_ISLAND @"pillIsland"
+// written by SpringBoard (PillDynamicIsland.m), read by Settings: whether this
+// iPhone has a Dynamic Island the tweak can use; absent until SpringBoard knows
+#define QD_KEY_ISLAND_SUPPORTED @"pillIslandSupported"
 #define QD_KEY_FADE_DURATION @"pillShowDuration"
 #define QD_KEY_CHECK_HOLD @"pillCheckHold"
 #define QD_KEY_EDGE_GLOW @"pillEdgeGlow"
@@ -84,6 +88,7 @@ uint64_t QDReadState(const char *name, int *token);
 #define QD_DEFAULT_SENSITIVITY_ENABLED NO
 #define QD_DEFAULT_DISTANCE_CM 30
 #define QD_DEFAULT_SENSITIVITY 4
+#define QD_DEFAULT_ISLAND NO
 #define QD_DEFAULT_FADE_DURATION 0.6
 #define QD_DEFAULT_CHECK_HOLD 1.2
 #define QD_DEFAULT_EDGE_GLOW NO

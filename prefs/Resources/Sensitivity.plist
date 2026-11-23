@@ -14,7 +14,7 @@
 
         {
             cell = PSGroupCell;
-            footerText = "・Distance: iOS uses 30cm by default.\n・Remind After: iOS checks the distance about every 80 seconds. The warning appears when the counter reaches 4 (~5 min). A normal-distance check lowers the counter by 1. Higher Remind After settings raise the counter needed for a warning.";
+            footerText = "Distance: iOS uses 30cm by default\nRemind After: iOS checks the distance about every 80 seconds. The warning appears when the counter reaches 4 (~5 min). A normal-distance check lowers the counter by 1. Higher Remind After settings raise the counter needed for a warning";
         },
         {
             cell = PSStaticTextCell;

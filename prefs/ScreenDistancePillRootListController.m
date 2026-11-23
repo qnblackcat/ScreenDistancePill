@@ -128,24 +128,6 @@ static NSDictionary<NSString *, NSArray<NSString *> *> *dependentRows(void) {
 	return _specifiers;
 }
 
-// footer notes justified on every page. Depending on the iOS version the
-// footer draws through a content configuration or the older textLabel, so
-// set both.
-- (void)tableView:(UITableView *)tableView willDisplayFooterView:(UIView *)view forSection:(NSInteger)section {
-	if ([PSListController instancesRespondToSelector:_cmd])
-		[super tableView:tableView willDisplayFooterView:view forSection:section];
-	if (![view isKindOfClass:[UITableViewHeaderFooterView class]])
-		return;
-	UITableViewHeaderFooterView *footer = (UITableViewHeaderFooterView *)view;
-	if ([footer.contentConfiguration isKindOfClass:[UIListContentConfiguration class]]) {
-		UIListContentConfiguration *config = [(UIListContentConfiguration *)footer.contentConfiguration copy];
-		config.textProperties.alignment = UIListContentTextAlignmentJustified;
-		footer.contentConfiguration = config;
-	} else {
-		footer.textLabel.textAlignment = NSTextAlignmentJustified;
-	}
-}
-
 // dim rows that only matter while a switch is on, like FlicksForAll does.
 // Rows that are on another page are simply not found.
 - (void)setRowsWithIDs:(NSArray<NSString *> *)identifiers enabled:(BOOL)enabled reload:(BOOL)reload {
@@ -230,6 +212,19 @@ static NSDictionary<NSString *, NSArray<NSString *> *> *dependentRows(void) {
 
 @implementation QDRootListController
 
+// SpringBoard writes whether this iPhone has a Dynamic Island the tweak can
+// use (Settings can't see its scenes); without one the switch is greyed out.
+// No answer yet: leave it on.
+- (NSArray *)specifiers {
+	if (!_specifiers) {
+		[super specifiers];
+		NSNumber *supported = [QDPrefs load][QD_KEY_ISLAND_SUPPORTED];
+		if ([supported isKindOfClass:[NSNumber class]] && !supported.boolValue)
+			[[self specifierForID:@"pillIsland"] setProperty:@NO forKey:@"enabled"];
+	}
+	return _specifiers;
+}
+
 - (NSString *)plistName {
 	return @"Root";
 }
@@ -257,8 +252,20 @@ static NSDictionary<NSString *, NSArray<NSString *> *> *dependentRows(void) {
 	[self killProcess:@"eyereliefd"];
 }
 
+- (NSString *)tweakVersion:(PSSpecifier *)specifier {
+	return @SDP_VERSION;
+}
+
+- (void)openURLString:(NSString *)string {
+	[[UIApplication sharedApplication] openURL:[NSURL URLWithString:string] options:@{} completionHandler:nil];
+}
+
 - (void)openSourceCode:(PSSpecifier *)specifier {
-	[[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"https://github.com/qnblackcat/ScreenDistancePill"] options:@{} completionHandler:nil];
+	[self openURLString:@"https://github.com/qnblackcat/ScreenDistancePill"];
+}
+
+- (void)openTwitter:(PSSpecifier *)specifier {
+	[self openURLString:@"https://x.com/t70438299"];
 }
 
 - (void)showAlertWithTitle:(NSString *)title message:(NSString *)message {
@@ -267,17 +274,42 @@ static NSDictionary<NSString *, NSArray<NSString *> *> *dependentRows(void) {
 	[self presentViewController:alert animated:YES completion:nil];
 }
 
-- (void)copyDebugLog {
+// the debug log with a header naming iOS and the device, or nil (after telling
+// the user) when it is empty
+- (NSString *)debugLogWithHeader {
 	NSString *log = QDLogFileRead(QDLogCopyMaxBytes);
 	if (!log.length) {
 		[self showAlertWithTitle:@"Debug log is empty" message:@"Turn on Debug, then show the warning with the test button."];
-		return;
+		return nil;
 	}
 	struct utsname system;
 	uname(&system);
 	NSString *header = [NSString stringWithFormat:@"ScreenDistancePill debug log, iOS %@, %s\n", [UIDevice currentDevice].systemVersion, system.machine];
-	[UIPasteboard generalPasteboard].string = [header stringByAppendingString:log];
+	return [header stringByAppendingString:log];
+}
+
+- (void)copyDebugLog {
+	NSString *log = [self debugLogWithHeader];
+	if (!log)
+		return;
+	[UIPasteboard generalPasteboard].string = log;
 	[self showAlertWithTitle:@"Copied" message:[NSString stringWithFormat:@"%lu KB of debug log copied to the clipboard.", (unsigned long)(log.length / 1024 + 1)]];
+}
+
+- (void)shareDebugLog {
+	NSString *log = [self debugLogWithHeader];
+	if (!log)
+		return;
+	NSURL *url = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"ScreenDistancePill-debug.log"]];
+	NSError *error = nil;
+	if (![log writeToURL:url atomically:YES encoding:NSUTF8StringEncoding error:&error]) {
+		[self showAlertWithTitle:@"Could not share the log" message:error.localizedDescription];
+		return;
+	}
+	UIActivityViewController *sheet = [[UIActivityViewController alloc] initWithActivityItems:@[ url ] applicationActivities:nil];
+	sheet.popoverPresentationController.sourceView = self.view;
+	sheet.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds), CGRectGetMidY(self.view.bounds), 1, 1);
+	[self presentViewController:sheet animated:YES completion:nil];
 }
 
 - (void)clearDebugLog {

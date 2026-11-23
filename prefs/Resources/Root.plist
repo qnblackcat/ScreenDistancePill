@@ -3,14 +3,22 @@
     items = (
         {
             cell = PSGroupCell;
-            footerText = "・Replaces the full-screen Screen Distance warning (\"iPhone is Too Close\") with a small pill under the Dynamic Island / Notch.\n・The pill does not block anything and goes away by itself once the phone is far enough away.";
+            footerText = "Shows a small pill instead of the full-screen \"iPhone is Too Close\" warning\n\nUse Dynamic Island: on iPhones that have one, shows the eye icon in the Dynamic Island instead of the pill";
         },
         {
             cell = PSSwitchCell;
-            label = "Enabled";
+            label = "Enable";
             default = 1;
             defaults = "com.qn.screendistancepill";
             key = enabled;
+        },
+        {
+            cell = PSSwitchCell;
+            id = pillIsland;
+            label = "Use Dynamic Island";
+            default = 0;
+            defaults = "com.qn.screendistancepill";
+            key = pillIsland;
         },
 
         {
@@ -38,7 +46,7 @@
         {
             cell = PSGroupCell;
             label = "🧪 Test";
-            footerText = "・Show Now: shows the pill at once, even in an excluded app or during the excluded time.\n・Show in 5 Seconds: waits so you can switch to another app, then follows Excluded Apps and Excluded Time like a real reminder.\n・Hold the phone at a normal distance and the pill goes away by itself.";
+            footerText = "Show Now: shows the pill at once, even in an excluded app or during the excluded time\n\nShow in 5 Seconds: waits so you can switch to another app, then follows Excluded Apps and Excluded Time like a real reminder";
         },
         {
             cell = PSButtonCell;
@@ -54,7 +62,7 @@
         {
             cell = PSGroupCell;
             label = "🛠️ Troubleshooting";
-            footerText = "・Debug: logs every distance sample and how long it took, and also writes the log to a file on this device (about 128 KB per process) so you can copy it into a bug report.\n・Restart eyereliefd: reloads the ScreenDistancePill hooks. It starts again by itself when needed.";
+            footerText = "Debug: logs every distance sample and how long it took, and also writes the log to a file on this device so you can copy it into a bug report\n\nCopy Debug Log / Share Log: copy the log to the clipboard, or send it as a file\n\nRestart eyereliefd: reloads the ScreenDistancePill's hooks";
         },
         {
             cell = PSSwitchCell;
@@ -62,6 +70,11 @@
             default = 0;
             defaults = "com.qn.screendistancepill";
             key = debug;
+        },
+        {
+        cell = PSButtonCell;
+        label = "Share Log";
+        action = shareDebugLog;
         },
         {
             cell = PSButtonCell;
@@ -85,16 +98,23 @@
         },
         {
             cell = PSGroupCell;
-            label = "🔗 Source";
+            label = "ℹ️ About";
+            footerText = "© 2026 Qn (Đạt Nguyễn)\nLicensed under GNU GPLv3";
+        },
+        {
+            cell = PSTitleValueCell;
+            label = "Version";
+            get = tweakVersion:;
         },
         {
             cell = PSButtonCell;
-            label = "Source Code";
+            label = "Source Code (GitHub)";
             action = openSourceCode:;
         },
         {
-            cell = PSGroupCell;
-            footerText = "© 2026 Qn (Đạt Nguyễn)\nLicensed under GNU GPLv3";
+            cell = PSButtonCell;
+            label = "Twitter (Đạt)";
+            action = openTwitter:;
         }
     );
 }

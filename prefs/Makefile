@@ -1,5 +1,6 @@
 TARGET = iphone:clang:17.5:17.0
 ARCHS = arm64 arm64e
+SDP_VERSION := $(shell awk '/^Version:/ {print $$2}' ../control)
 
 include $(THEOS)/makefiles/common.mk
 
@@ -9,7 +10,7 @@ ScreenDistancePillPrefs_FILES = ScreenDistancePillRootListController.m ScreenDis
 ScreenDistancePillPrefs_INSTALL_PATH = /Library/PreferenceBundles
 ScreenDistancePillPrefs_FRAMEWORKS = UIKit
 ScreenDistancePillPrefs_PRIVATE_FRAMEWORKS = Preferences
-ScreenDistancePillPrefs_CFLAGS = -fobjc-arc
+ScreenDistancePillPrefs_CFLAGS = -fobjc-arc -DSDP_VERSION=\"$(SDP_VERSION)\"
 
 include $(THEOS_MAKE_PATH)/bundle.mk
 
