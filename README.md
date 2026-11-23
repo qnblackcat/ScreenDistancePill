@@ -6,7 +6,7 @@
 
 # ScreenDistancePill
 
-Shows a small pill instead of the full-screen "iPhone is Too Close" warning. On iPhones that have one, you can choose to shows 
+Shows a small pill instead of the full-screen "iPhone is Too Close" warning. On iPhones that have Dynamic Island, you can choose to shows 
 the eye icon in the Dynamic Island instead of the pill
 
 <details>
