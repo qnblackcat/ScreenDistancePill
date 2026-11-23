@@ -17,6 +17,7 @@
 #import <notify.h>
 #import "ScreenDistancePillPrefs.h"
 #import "ScreenDistancePillLog.h"
+#import "PillDynamicIsland.h"
 
 // safety net in case eyereliefd goes away without hiding it
 #define QD_PILL_TIMEOUT 200
@@ -484,6 +485,7 @@ static NSTimeInterval pillFadeDuration(NSDictionary *prefs) {
 }
 
 static void fadeOutPill(NSUInteger generation, NSTimeInterval duration) {
+	QDIslandRemove();
 	// ease-out: most of the fade happens early, like the spring on the way in
 	[UIView animateWithDuration:duration delay:0 options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState animations:^{
 		pillView.alpha = 0;
@@ -523,6 +525,7 @@ static void hidePill(QDPillEnd end, NSString *reason) {
 		return;
 	}
 	[pillView showSuccess];
+	QDIslandShowSuccess();
 	NSTimeInterval hold = QDPrefDouble(settings, QD_KEY_CHECK_HOLD, QD_DEFAULT_CHECK_HOLD, 0.2, 2.2);
 	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(hold * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
 		if (generation == pillGeneration)
@@ -540,20 +543,25 @@ static void showPill(BOOL test) {
 
 	[pillView showWarning];
 	NSDictionary *prefs = settings;
+	BOOL island = QDPrefBool(prefs, QD_KEY_ISLAND, QD_DEFAULT_ISLAND) && QDIslandShow();
 	// Glow Strength slider, in percent
 	CGFloat glowStrength = QDPrefDouble(prefs, QD_KEY_GLOW_STRENGTH, QD_DEFAULT_GLOW_STRENGTH, 50, 150) / 100;
-	[pillView startAttentionWithBounce:QDPrefBool(prefs, QD_KEY_BOUNCE, QD_DEFAULT_BOUNCE)
-		glow:QDPrefBool(prefs, QD_KEY_GLOW, QD_DEFAULT_GLOW)
+	// in the island there is no pill; the timer still runs for Edge Glow's beat
+	[pillView startAttentionWithBounce:!island && QDPrefBool(prefs, QD_KEY_BOUNCE, QD_DEFAULT_BOUNCE)
+		glow:!island && QDPrefBool(prefs, QD_KEY_GLOW, QD_DEFAULT_GLOW)
 		glowStrength:glowStrength];
+	pillView.hidden = island;
 	pillWindow.hidden = NO;
 	updatePillTop();
 	[pillWindow layoutIfNeeded];
 	pillView.alpha = 0;
 	pillView.transform = CGAffineTransformConcat(CGAffineTransformMakeScale(0.6, 0.6), CGAffineTransformMakeTranslation(0, -20));
-	[UIView animateWithDuration:pillFadeDuration(prefs) delay:0 usingSpringWithDamping:0.8 initialSpringVelocity:0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
-		pillView.alpha = 1;
-		pillView.transform = CGAffineTransformIdentity;
-	} completion:nil];
+	if (!island) {
+		[UIView animateWithDuration:pillFadeDuration(prefs) delay:0 usingSpringWithDamping:0.8 initialSpringVelocity:0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
+			pillView.alpha = 1;
+			pillView.transform = CGAffineTransformIdentity;
+		} completion:nil];
+	}
 	playShowHaptic(prefs);
 
 	if (QDPrefBool(prefs, QD_KEY_EDGE_GLOW, QD_DEFAULT_EDGE_GLOW)) {
@@ -636,6 +644,12 @@ static void publishState(const char *name, uint64_t value) {
 static void reloadSettings(void) {
 	NSDictionary *prefs = [QDPrefs load];
 	settings = prefs;
+	// Reset Settings deletes the Dynamic Island answer along with the rest; the
+	// first load is covered by the call in %ctor
+	static BOOL loadedBefore;
+	if (loadedBefore && !prefs[QD_KEY_ISLAND_SUPPORTED])
+		QDIslandPublishSupport();
+	loadedBefore = YES;
 	BOOL enabled = QDPrefBool(prefs, QD_KEY_ENABLED, QD_DEFAULT_ENABLED);
 	BOOL debug = QDPrefBool(prefs, QD_KEY_DEBUG, QD_DEFAULT_DEBUG);
 	// Custom Sensitivity off: 0 for both, so eyereliefd keeps iOS's own values
@@ -659,6 +673,7 @@ static void reloadSettings(void) {
 		return;
 
 	reloadSettings();
+	QDIslandPublishSupport();
 
 	int token;
 	notify_register_dispatch(QD_PREFS_CHANGED, &token, dispatch_get_main_queue(), ^(int t) {
