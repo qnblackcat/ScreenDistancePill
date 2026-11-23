@@ -14,6 +14,10 @@
 
 #define QDDebugLog(...) do { if (QDDebugEnabled()) QDLogWrite(__VA_ARGS__); } while (0)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // what QDDebugLog calls once Debug is known to be on; don't call it directly
 void QDLogWrite(NSString *format, ...) NS_FORMAT_FUNCTION(1, 2);
 
@@ -25,3 +29,7 @@ BOOL QDDebugEnabled(void);
 // maxBytes characters.
 NSString *QDLogFileRead(NSUInteger maxBytes);
 void QDLogFileClear(void);
+
+#ifdef __cplusplus
+}
+#endif

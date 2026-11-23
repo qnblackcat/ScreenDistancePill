@@ -62,7 +62,7 @@
         {
             cell = PSGroupCell;
             label = "🛠️ Troubleshooting";
-            footerText = "Debug: logs every distance sample and how long it took, and also writes the log to a file on this device so you can copy it into a bug report\n\nCopy Debug Log / Share Log: copy the log to the clipboard, or send it as a file\n\nRestart eyereliefd: reloads the ScreenDistancePill's hooks";
+            footerText = "Debug: logs every distance sample and how long it took, and also writes the log to a file on this device so you can copy it into a bug report\n\nCopy Debug Log / Share Log: copy the log to the clipboard, or send it as a file\n\nRestart Daemon: reloads the ScreenDistancePill's necessary hooks";
         },
         {
             cell = PSSwitchCell;
@@ -93,8 +93,8 @@
         },
         {
             cell = PSButtonCell;
-            label = "Restart eyereliefd";
-            action = restartEyeReliefDaemon;
+            label = "Restart Daemon";
+            action = restartDaemon;
         },
         {
             cell = PSGroupCell;

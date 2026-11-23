@@ -11,6 +11,7 @@
 		<key>Executables</key>
 		<array>
 			<string>eyereliefd</string>
+			<string>backboardd</string>
 		</array>
 		<key>Mode</key>
 		<string>Any</string>

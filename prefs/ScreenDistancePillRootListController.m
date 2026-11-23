@@ -229,6 +229,12 @@ static NSDictionary<NSString *, NSArray<NSString *> *> *dependentRows(void) {
 	return @"Root";
 }
 
+// iOS 17 has eyereliefd; on iOS 16 there is no Screen Distance and backboardd
+// does its job (Daemon16.xm)
+static BOOL hasEyeReliefDaemon(void) {
+	return [NSProcessInfo.processInfo isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){17, 0, 0}];
+}
+
 // eyereliefd relaunches on its next mach lookup or XPC activity, and the fresh
 // process picks up the tweak (or drops it).
 - (void)killProcess:(NSString *)name {
@@ -248,8 +254,10 @@ static NSDictionary<NSString *, NSArray<NSString *> *> *dependentRows(void) {
 	[self showAlertWithTitle:title message:message];
 }
 
-- (void)restartEyeReliefDaemon {
-	[self killProcess:@"eyereliefd"];
+// the daemon that hosts the hooks: eyereliefd on iOS 17+, backboardd on iOS 16
+// (restarting that one respring the device)
+- (void)restartDaemon {
+	[self killProcess:hasEyeReliefDaemon() ? @"eyereliefd" : @"backboardd"];
 }
 
 - (NSString *)tweakVersion:(PSSpecifier *)specifier {
@@ -331,7 +339,7 @@ static NSDictionary<NSString *, NSArray<NSString *> *> *dependentRows(void) {
 	[self presentViewController:alert animated:YES completion:nil];
 }
 
-// set when eyereliefd acknowledges the last trigger
+// set when the daemon acknowledges the last trigger
 static BOOL triggerAcked;
 
 - (void)triggerWarning:(PSSpecifier *)specifier {
@@ -346,7 +354,7 @@ static BOOL triggerAcked;
 	static int ackToken = NOTIFY_TOKEN_INVALID;
 	if (ackToken == NOTIFY_TOKEN_INVALID) {
 		notify_register_dispatch(QD_TRIGGER_ACK, &ackToken, dispatch_get_main_queue(), ^(int t) {
-			QDDebugLog(@"eyereliefd acknowledged the trigger");
+			QDDebugLog(@"%@ acknowledged the trigger", hasEyeReliefDaemon() ? @"eyereliefd" : @"backboardd");
 			triggerAcked = YES;
 		});
 	}
@@ -354,11 +362,16 @@ static BOOL triggerAcked;
 
 	// eyereliefd is launched on demand and exits when idle, so talk to its mach
 	// service first; launchd starts it if needed and the reply means it is up.
+	// (backboardd, which iOS 16 uses instead, is always running.)
+	BOOL eyeRelief = hasEyeReliefDaemon();
+	NSString *daemon = eyeRelief ? @"eyereliefd" : @"backboardd";
 	dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
 		NSString *wakeResult;
-		void *handle = dlopen("/System/Library/PrivateFrameworks/EyeRelief.framework/EyeRelief", RTLD_LAZY);
+		void *handle = eyeRelief ? dlopen("/System/Library/PrivateFrameworks/EyeRelief.framework/EyeRelief", RTLD_LAZY) : NULL;
 		Class clientClass = NSClassFromString(@"EREyeReliefClient");
-		if (!handle || !clientClass) {
+		if (!eyeRelief) {
+			wakeResult = @"no eyereliefd on this iOS, the trigger goes to backboardd";
+		} else if (!handle || !clientClass) {
 			wakeResult = [NSString stringWithFormat:@"EyeRelief client unavailable (%s)", dlerror() ?: "class missing"];
 		} else {
 			NSError *error = nil;
@@ -367,7 +380,7 @@ static BOOL triggerAcked;
 				? [NSString stringWithFormat:@"XPC error: %@", error]
 				: [NSString stringWithFormat:@"XPC ok, distance sampling %@", sampling ? @"on" : @"off"];
 		}
-		QDDebugLog(@"waking eyereliefd: %@", wakeResult);
+		QDDebugLog(@"waking %@: %@", daemon, wakeResult);
 		uint32_t status = notify_post(name);
 		QDDebugLog(@"posted trigger, status %u", status);
 
@@ -375,8 +388,8 @@ static BOOL triggerAcked;
 			if (triggerAcked)
 				return;
 			UIAlertController *alert = [UIAlertController
-				alertControllerWithTitle:@"eyereliefd didn't respond"
-				message:[NSString stringWithFormat:@"%@\nnotify_post status: %u\n\nThe tweak is probably not loaded into eyereliefd.", wakeResult, status]
+				alertControllerWithTitle:[NSString stringWithFormat:@"%@ didn't respond", daemon]
+				message:[NSString stringWithFormat:@"%@\nnotify_post status: %u\n\nThe tweak is probably not loaded into %@.", wakeResult, status, daemon]
 				preferredStyle:UIAlertControllerStyleAlert];
 			[alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleCancel handler:nil]];
 			[self presentViewController:alert animated:YES completion:nil];

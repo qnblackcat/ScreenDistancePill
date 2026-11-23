@@ -163,14 +163,29 @@ static NSString *pillTitle(void) {
 	]];
 
 	[self updateBorderColor];
-	__weak QDPillView *weakSelf = self;
-	[self registerForTraitChanges:@[ [UITraitUserInterfaceStyle class] ] withHandler:^(id<UITraitEnvironment> environment, UITraitCollection *previous) {
-		[weakSelf updateBorderColor];
-	}];
+	// iOS 17+ registers for trait changes; iOS 16 gets traitCollectionDidChange: below
+	if (@available(iOS 17.0, *)) {
+		__weak QDPillView *weakSelf = self;
+		[self registerForTraitChanges:@[ [UITraitUserInterfaceStyle class] ] withHandler:^(id<UITraitEnvironment> environment, UITraitCollection *previous) {
+			[weakSelf updateBorderColor];
+		}];
+	}
 
 	[self showWarning];
 	return self;
 }
+
+// iOS 16 only; from iOS 17 the registration above does the job
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+- (void)traitCollectionDidChange:(UITraitCollection *)previous {
+	[super traitCollectionDidChange:previous];
+	if (@available(iOS 17.0, *)) {
+	} else {
+		[self updateBorderColor];
+	}
+}
+#pragma clang diagnostic pop
 
 // CGColors don't follow dark mode by themselves
 - (void)updateBorderColor {
@@ -268,8 +283,11 @@ static CAKeyframeAnimation *beatAnimation(NSString *keyPath, id rest, id peak) {
 - (void)beat {
 	if (self.beatHandler)
 		self.beatHandler();
-	if (_bounce)
-		[_icon addSymbolEffect:[NSSymbolBounceEffect bounceUpEffect] options:[NSSymbolEffectOptions optionsWithSpeed:QD_BOUNCE_SPEED]];
+	// symbol effects need iOS 17; on iOS 16 the icon just doesn't bounce
+	if (@available(iOS 17.0, *)) {
+		if (_bounce)
+			[_icon addSymbolEffect:[NSSymbolBounceEffect bounceUpEffect] options:[NSSymbolEffectOptions optionsWithSpeed:QD_BOUNCE_SPEED]];
+	}
 	if (!_glowColor)
 		return;
 	CAAnimationGroup *glow = [CAAnimationGroup animation];
@@ -286,7 +304,8 @@ static CAKeyframeAnimation *beatAnimation(NSString *keyPath, id rest, id peak) {
 	[_beatTimer invalidate];
 	_beatTimer = nil;
 	_bounce = NO;
-	[_icon removeAllSymbolEffects];
+	if (@available(iOS 17.0, *))
+		[_icon removeAllSymbolEffects];
 	[self.layer removeAnimationForKey:@"qdBeat"];
 	[_tint.layer removeAnimationForKey:@"qdBeat"];
 	[self setGlowColor:nil opacity:QD_SHADOW_OPACITY radius:QD_SHADOW_RADIUS];
@@ -337,12 +356,26 @@ static CAKeyframeAnimation *beatAnimation(NSString *keyPath, id rest, id peak) {
 	}
 	_edges = edges;
 	[self updateColors];
-	__weak QDVignetteView *weakSelf = self;
-	[self registerForTraitChanges:@[ [UITraitUserInterfaceStyle class] ] withHandler:^(id<UITraitEnvironment> environment, UITraitCollection *previous) {
-		[weakSelf updateColors];
-	}];
+	if (@available(iOS 17.0, *)) {
+		__weak QDVignetteView *weakSelf = self;
+		[self registerForTraitChanges:@[ [UITraitUserInterfaceStyle class] ] withHandler:^(id<UITraitEnvironment> environment, UITraitCollection *previous) {
+			[weakSelf updateColors];
+		}];
+	}
 	return self;
 }
+
+// iOS 16 only; from iOS 17 the registration above does the job
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+- (void)traitCollectionDidChange:(UITraitCollection *)previous {
+	[super traitCollectionDidChange:previous];
+	if (@available(iOS 17.0, *)) {
+	} else {
+		[self updateColors];
+	}
+}
+#pragma clang diagnostic pop
 
 - (void)updateColors {
 	UIColor *orange = [[UIColor systemOrangeColor] resolvedColorWithTraitCollection:self.traitCollection];
@@ -657,7 +690,7 @@ static void reloadSettings(void) {
 	NSInteger sensitivity = 0;
 	if (QDPrefBool(prefs, QD_KEY_SENSITIVITY_ENABLED, QD_DEFAULT_SENSITIVITY_ENABLED)) {
 		// the slider stores a double that may not land exactly on the whole number
-		distanceCm = lround(QDPrefDouble(prefs, QD_KEY_DISTANCE_CM, QD_DEFAULT_DISTANCE_CM, 0, 100));
+		distanceCm = lround(QDPrefDouble(prefs, QD_KEY_DISTANCE_CM, QD_DEFAULT_DISTANCE_CM, QD_MIN_DISTANCE_CM, QD_MAX_DISTANCE_CM));
 		sensitivity = lround(QDPrefDouble(prefs, QD_KEY_SENSITIVITY, QD_DEFAULT_SENSITIVITY, 0, 100));
 	}
 	publishState(QD_ENABLED_STATE, enabled ? QDEnabledStateOn : QDEnabledStateOff);
@@ -666,6 +699,19 @@ static void reloadSettings(void) {
 	publishState(QD_SENSITIVITY_STATE, (uint64_t)sensitivity);
 	QDDebugLog(@"%s, debug %s, threshold %ld cm, sensitivity %ld samples (0 = stock)",
 		enabled ? "enabled" : "disabled", debug ? "on" : "off", (long)distanceCm, (long)sensitivity);
+}
+
+// the apps during which Apple's Screen Distance never samples
+// (-[ERDaemonManager nonPermissibleOnscreenContent] in eyereliefd, iOS 17)
+static BOOL frontAppBlocksSampling(void) {
+	static NSSet<NSString *> *apps;
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{
+		apps = [NSSet setWithObjects:@"com.apple.camera", @"com.apple.facetime", @"com.apple.Preferences", @"com.apple.MobileSMS",
+			@"com.apple.mobilephone", @"com.apple.Photo-Booth", @"com.apple.InCallService", nil];
+	});
+	NSString *frontmost = [(SpringBoard *)[UIApplication sharedApplication] _accessibilityFrontMostApplication].bundleIdentifier;
+	return frontmost && [apps containsObject:frontmost];
 }
 
 %ctor {
@@ -689,6 +735,13 @@ static void reloadSettings(void) {
 	});
 	notify_register_dispatch(QD_PILL_CANCEL, &token, dispatch_get_main_queue(), ^(int t) {
 		hidePill(QDPillEndCancelled, @"eyereliefd stopped watching");
+	});
+	// iOS 16: backboardd does the sampling and asks which app is in front
+	notify_register_dispatch(QD_FRONT_APP_QUERY, &token, dispatch_get_main_queue(), ^(int t) {
+		BOOL blocked = frontAppBlocksSampling();
+		QDDebugLog(@"front app query: %@", blocked ? @"no sampling here" : @"fine to sample");
+		publishState(QD_FRONT_APP_STATE, blocked ? 1 : 0);
+		notify_post(QD_FRONT_APP_REPLY);
 	});
 	// distance sampling stops on the lock screen, so the pill would never clear
 	notify_register_dispatch("com.apple.springboard.lockcomplete", &token, dispatch_get_main_queue(), ^(int t) {

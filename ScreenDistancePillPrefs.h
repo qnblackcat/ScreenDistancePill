@@ -22,6 +22,14 @@
 #define QD_PILL_DISMISSED "com.qn.screendistancepill/PillDismissed"
 #define QD_PILL_SUPPRESSED "com.qn.screendistancepill/PillSuppressed"
 
+// iOS 16 only: before each sample backboardd asks SpringBoard whether the front
+// app is one Apple's own Screen Distance never samples in (Camera, FaceTime,
+// ...). SpringBoard sets the FrontApp state (1 = don't sample, else 0) and then
+// posts FrontAppReply.
+#define QD_FRONT_APP_QUERY "com.qn.screendistancepill/FrontAppQuery"
+#define QD_FRONT_APP_REPLY "com.qn.screendistancepill/FrontAppReply"
+#define QD_FRONT_APP_STATE "com.qn.screendistancepill/FrontApp"
+
 typedef NS_OPTIONS(uint64_t, QDPillRequest) {
 	// show even in an excluded app or during the pause schedule
 	QDPillRequestIgnoreRules = 1 << 0,
@@ -49,7 +57,13 @@ typedef NS_ENUM(uint64_t, QDEnabledState) {
 
 // a notify state, registering name into *token (NOTIFY_TOKEN_INVALID at
 // first) on the first call; 0 if it can't be read
+#ifdef __cplusplus
+extern "C" {
+#endif
 uint64_t QDReadState(const char *name, int *token);
+#ifdef __cplusplus
+}
+#endif
 
 // the "defaults" of every row in the Settings plists
 #define QD_PREFS_DOMAIN @"com.qn.screendistancepill"
@@ -87,6 +101,9 @@ uint64_t QDReadState(const char *name, int *token);
 #define QD_DEFAULT_DEBUG NO
 #define QD_DEFAULT_SENSITIVITY_ENABLED NO
 #define QD_DEFAULT_DISTANCE_CM 30
+// the slider's range in Sensitivity.plist; a stored value outside it is clamped
+#define QD_MIN_DISTANCE_CM 25
+#define QD_MAX_DISTANCE_CM 40
 #define QD_DEFAULT_SENSITIVITY 4
 #define QD_DEFAULT_ISLAND NO
 #define QD_DEFAULT_FADE_DURATION 0.6
@@ -103,10 +120,16 @@ uint64_t QDReadState(const char *name, int *token);
 #define QD_DEFAULT_PAUSE_END (7 * 60)
 
 // a stored switch, or fallback when it is missing or not a number
+#ifdef __cplusplus
+extern "C" {
+#endif
 BOOL QDPrefBool(NSDictionary *prefs, NSString *key, BOOL fallback);
 // a stored number (slider, segment), or fallback when it is missing or not a
 // number; clamped to [min, max]
 double QDPrefDouble(NSDictionary *prefs, NSString *key, double fallback, double min, double max);
+#ifdef __cplusplus
+}
+#endif
 
 // Settings live in one plist inside jbroot instead of going through cfprefsd,
 // which would deny our domain to sandboxed processes (same trick as

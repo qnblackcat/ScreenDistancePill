@@ -1,4 +1,4 @@
-TARGET = iphone:clang:17.5:17.0
+TARGET = iphone:clang:17.5:16.0
 ARCHS = arm64 arm64e
 SDP_VERSION := $(shell awk '/^Version:/ {print $$2}' ../control)
 
