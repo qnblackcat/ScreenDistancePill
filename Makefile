@@ -1,5 +1,5 @@
-TARGET = iphone:clang:17.5:17.0
-INSTALL_TARGET_PROCESSES = SpringBoard eyereliefd Preferences
+TARGET = iphone:clang:17.5:16.0
+INSTALL_TARGET_PROCESSES = eyereliefd backboardd Preferences
 ARCHS = arm64 arm64e
 FINALPACKAGE = 1
 
@@ -7,7 +7,7 @@ include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = ScreenDistancePill
 
-ScreenDistancePill_FILES = Daemon.x Pill.x PillDynamicIsland.m ScreenDistancePillPrefs.m ScreenDistancePillLog.m
+ScreenDistancePill_FILES = Daemon.x Daemon16.xm Pill.x PillDynamicIsland.m ScreenDistancePillPrefs.m ScreenDistancePillLog.m
 ScreenDistancePill_FRAMEWORKS = UIKit
 ScreenDistancePill_CFLAGS = -fobjc-arc
 
