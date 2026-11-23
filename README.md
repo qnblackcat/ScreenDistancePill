@@ -6,15 +6,11 @@
 
 # ScreenDistancePill
 
-Replaces the full-screen Screen Distance warning ("iPhone is Too Close",
-iOS 17+) with a small pill under the Dynamic Island / Notch. The pill blocks nothing and
-goes away by itself once the face is far enough away (or no longer seen).
-
-Tested on iOS 17.1.1 roothide (iPhone 15 Pro):
+Shows a small pill instead of the full-screen "iPhone is Too Close" warning. On iPhones that have one, you can choose to shows 
+the eye icon in the Dynamic Island instead of the pill
 
 <details>
 <summary>How the stock warning works</summary>
-
 
 - `eyereliefd` (`EyeRelief.framework/Resources/eyereliefd`) samples the face
   distance through AttentionAwareness every 80 s (`NSBackgroundActivityScheduler`,
@@ -36,7 +32,6 @@ Tested on iOS 17.1.1 roothide (iPhone 15 Pro):
 
 <details>
 <summary>What the tweak does</summary>
-
 
 - `eyereliefd` (`Daemon.x`): `-[ERDaemonManager interveneWithType:withCompletion:]`
   no longer opens the remote alert. It posts `…/PillShow`, then repeats
@@ -87,8 +82,25 @@ Tested on iOS 17.1.1 roothide (iPhone 15 Pro):
 
 </details>
 
+
+## Building
+
+<details>
+<summary>Build instructions</summary>
+
+Build the package with roothide's fork of Theos. 
+
+```sh
+make clean package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
+make clean package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=roothide
+```
+
+</details>
+
 ## License
 
-© 2026 Qn (Đạt Nguyễn). Licensed under [GNU GPLv3](LICENSE).
+ScreenDistancePill is licensed under the GNU General Public License, version 3 only. See [LICENSE](LICENSE).
+
+© 2026 Qn (Đạt Nguyễn)
 
 
