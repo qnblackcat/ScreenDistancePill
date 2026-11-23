@@ -1,7 +1,13 @@
 #!/bin/sh
-# eyereliefd is not restarted by package managers, and an already running
-# eyereliefd would keep going without (or with the old) tweak. launchd
-# relaunches it on demand. SIGKILL, because eyereliefd uses EnableTransactions
-# and can sit on a SIGTERM while a transaction is open.
-killall -9 eyereliefd 2>/dev/null
+# The tweak's hooks live in eyereliefd on iOS 17+ and in backboardd on iOS 16
+# (Darwin 22 = iOS 16, 23 = iOS 17). Package managers restart neither, and an
+# already running one would keep going without (or with the old) tweak.
+# SIGKILL, because both use transactions and can sit on a SIGTERM; launchd
+# relaunches them. Killing backboardd respring the device.
+if [ "$(uname -r | cut -d. -f1)" -ge 23 ]; then
+	daemon=eyereliefd
+else
+	daemon=backboardd
+fi
+killall -9 "$daemon" 2>/dev/null
 exit 0
