@@ -4,4 +4,17 @@
 # relaunches it on demand. SIGKILL, because eyereliefd uses EnableTransactions
 # and can sit on a SIGTERM while a transaction is open.
 killall -9 eyereliefd 2>/dev/null
+
+# debug logs (ScreenDistancePillLog.m tries these three directories, inside
+# the jailbreak root: "" on roothide, /var/jb on rootless). Only when the
+# package is really removed, not on an upgrade.
+case "$1" in
+remove|purge)
+	for root in "" /var/jb; do
+		rm -rf "$root/var/mobile/Library/Caches/ScreenDistancePill" \
+			"$root/var/mobile/Library/ScreenDistancePill" \
+			"$root/var/tmp/ScreenDistancePill"
+	done
+	;;
+esac
 exit 0
